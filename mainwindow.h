@@ -41,8 +41,7 @@ public:
         bool f	/* TRUE:変更あり, FALSE:変更なし */
     );
     bool save_file (int);
-    void edit_rotate (
-        int dir		/* 1:左, 2:右, 3:上, 4:下 */     );
+    void edit_rotate (int dir); /* 1:左, 2:右, 3:上, 4:下 */
 
 public slots:
     void on_tabWidget_current_changed(int);
@@ -149,6 +148,7 @@ private:
     //
 
     friend class TabWidget;
+    friend class PreviewWidget;
 };
 
 

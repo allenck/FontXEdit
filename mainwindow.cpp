@@ -7,6 +7,8 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QDebug>
+#include <previewdialog.h>
+#include <QWindow>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -51,6 +53,8 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(ui->idc_pvc, &QPushButton::clicked, [=]{
         /* プリビューボタン (Preview button)*/
+       PreviewDialog* dlg = new PreviewDialog(this);
+       int rslt = dlg->exec();
     });
 
 }
@@ -572,6 +576,8 @@ UINT MainWindow::load_file (bool opn
     }
     /* 選択したファイルを全部読み込む(Read all selected files) */
     f = read_fontxfile(fileName);
+    ui->idc_pvc->setEnabled(true);
+    ui->idc_exp->setEnabled(true);
     return f;
 }
 
@@ -657,7 +663,10 @@ long MainWindow::read_bdffile (QFile* fp)
         }
         if (chr >= 0 && !memcmp(str, "BITMAP", 6)) {
             //memset(FontImage[chr][0], 0, MAX_FONT_WB * MAX_FONT_SQ);
-            fontImage = new BYTE[0,MAX_FONT_WB * MAX_FONT_SQ];
+            if(fontMap.contains(QChar((WORD)chr)))
+                fontImage = fontMap.value(QChar((WORD)chr));
+            else
+                fontImage = new BYTE[0,MAX_FONT_WB * MAX_FONT_SQ];
             lc = 0;
             bitmap_count++;
             continue;
@@ -716,6 +725,8 @@ void MainWindow::import_file (
             //sprintf(onf, Str[15][Loc], nc);
             //MessageBox(hwnd, onf, Str[16][Loc], MB_OK);
             QMessageBox::critical(this, Str[16][Loc], QString(Str[15][Loc]).arg(nc), QMessageBox::Ok);
+            ui->idc_pvc->setEnabled(true);
+            ui->idc_exp->setEnabled(true);
         }
     }
     else {
@@ -933,7 +944,11 @@ void MainWindow::read_font (
     buf = f->read(btr);
 
     //memset(d, 0, MAX_FONT_WB * MAX_FONT_SQ);
-    BYTE* fontImage = new BYTE[0, MAX_FONT_WB * MAX_FONT_SQ];
+    BYTE* fontImage;
+    if(fontMap.contains(QChar(code)))
+        fontImage = fontMap.value(QChar(code));
+    else
+        fontImage = new BYTE[0, MAX_FONT_WB * MAX_FONT_SQ];
 //    for (v = 0; v < fh; v++) {
 //        memcpy(d, s, fwb);
 //        s += fwb; d += MAX_FONT_WB;

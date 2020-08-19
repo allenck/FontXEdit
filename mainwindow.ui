@@ -36,6 +36,9 @@
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
        <widget class="QPushButton" name="idc_pvc">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="text">
          <string>Preview</string>
         </property>
@@ -50,6 +53,9 @@
       </item>
       <item>
        <widget class="QPushButton" name="idc_exp">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="text">
          <string>Export</string>
         </property>

@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>icon1.ico</file>
+        <file>cursor1.cur</file>
+    </qresource>
+</RCC>

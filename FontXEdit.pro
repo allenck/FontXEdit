@@ -27,17 +27,23 @@ SOURCES += \
         main.cpp \
         mainwindow.cpp \
     tabwidget.cpp \
-    editwindow.cpp
+    editwindow.cpp \
+    previewdialog.cpp
 
 HEADERS += \
         mainwindow.h \
     tabwidget.h \
     defines.h \
-    editwindow.h
+    editwindow.h \
+    previewdialog.h
 
 FORMS += \
         mainwindow.ui \
-    tabwidget.ui
+    tabwidget.ui \
+    previewdialog.ui
 
 DISTFILES += \
     README.md
+
+RESOURCES += \
+    resources.qrc
