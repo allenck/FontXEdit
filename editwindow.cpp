@@ -39,7 +39,7 @@ void EditWindow::code_change(WORD code, BYTE *buffer)
     update();
 }
 
-void EditWindow::size_change(int Dbcs, int fh, int fw)
+void EditWindow::size_change(int Dbcs, int fw, int fh)
 {
     if(this->Dbcs == Dbcs)
     {

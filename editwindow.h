@@ -19,7 +19,7 @@ public:
 
 public slots:
     void code_change(WORD code, BYTE* );
-    void size_change(int, int, int);
+    void size_change(int Dbcs, int fw, int fh);
 
 private:
     BYTE* editFont;

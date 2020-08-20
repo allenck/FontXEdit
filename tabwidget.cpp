@@ -96,7 +96,7 @@ TabWidget::TabWidget(BYTE Dbcs, QWidget *parent) :
                                                     mainWindow));
 }
 
-void TabWidget::size_change(int Dbcs, int fh, int fw)
+void TabWidget::size_change(int Dbcs, int fw, int fh)
 {
     if(this->Dbcs == Dbcs)
     {

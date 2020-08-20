@@ -30,7 +30,7 @@ private:
  BYTE Dbcs;
 
 private slots:
- void size_change(int, int, int);
+ void size_change(int Dbcs, int fw, int fh); // dbcs, fw, fh
  void icc_fh_value_changed(int);
  void icc_fw_value_changed(int);
 

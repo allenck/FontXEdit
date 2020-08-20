@@ -9,6 +9,7 @@
 #include <QDebug>
 #include <previewdialog.h>
 #include <QWindow>
+#include <QStringList>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -593,6 +594,8 @@ long MainWindow::read_bdffile (QFile* fp)
     encoded_count =0;
     bitmap_count = 0;
     expectedChars = 0;
+    int bbxWidth = 0;
+    int bbxHeight = 0;
 
     fontMap.clear();
     BYTE* fontImage = new BYTE[0, MAX_FONT_WB * MAX_FONT_SQ];
@@ -673,12 +676,31 @@ long MainWindow::read_bdffile (QFile* fp)
         }
         if(!memcmp(str, "CHARS ", 6))
         {
-         QString chars(str+6);
-         expectedChars = chars.toInt();
-         qDebug() << "expected chars=" << str;
-         continue;
+             QString chars(str+6);
+             expectedChars = chars.toInt();
+             qDebug() << "expected chars=" << str;
+             continue;
+        }
+        if(!memcmp(str, "BBX", 3))
+        {
+            QString chars(str);
+            QStringList sl = chars.split(" ");
+            if(sl.count() > 3)
+            {
+                bool ok;
+                int w = sl.at(1).toInt(&ok);
+                if(!ok) continue;
+                int h = sl.at(2).toInt(&ok);
+                if(!ok) continue;
+                if(w > bbxWidth)
+                    bbxWidth = w;
+                if(h > bbxHeight)
+                    bbxHeight = h;
+            }
         }
     }
+    if(bbxHeight > 0 && bbxWidth > 0)
+        emit size_change(Dbcs, bbxWidth, bbxHeight);
     return nchr;
 }
 
@@ -996,7 +1018,7 @@ UINT MainWindow::read_fontxfile (	/* 0:失敗, 1:半角, 2:全角 (0: Failure, 1
     }
     fw = buf[14]; fh = buf[15];		/* 幅と高さ (Width and height)*/
     dbcs = buf[16];					/* 半角/全角フラグ (Half-width/full-width flag)*/
-    emit size_change(Dbcs, fh, fw);
+    emit size_change(Dbcs, fw, fh);
 
     if ((dbcs && Loc) || dbcs > 1 || fw < 4 || fw > MAX_FONT_SQ || fh < 4 || fh > MAX_FONT_SQ) {
         f->close();
