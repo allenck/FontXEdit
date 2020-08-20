@@ -140,6 +140,7 @@ private:
         UINT fh		/* フォント高さ[dot] (Font height [dot])*/    );
     bool write_fnt_file(QString path);
     QString outFile;
+    QString inFile;
 
     // working variables used by write_bytes();
     int ix = 0;     //used by write_bytes();

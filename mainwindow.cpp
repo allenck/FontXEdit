@@ -749,6 +749,9 @@ void MainWindow::import_file (
             QMessageBox::critical(this, Str[16][Loc], QString(Str[15][Loc]).arg(nc), QMessageBox::Ok);
             ui->idc_pvc->setEnabled(true);
             ui->idc_exp->setEnabled(true);
+            inFile = fileName;
+            QFileInfo inf(fileName);
+            setWindowTitle(inf.baseName());
         }
     }
     else {
