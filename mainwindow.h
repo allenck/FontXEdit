@@ -40,7 +40,7 @@ public:
     void edit_set_changed (
         bool f	/* TRUE:変更あり, FALSE:変更なし */
     );
-    bool save_file (int);
+    bool save_file (int mode);
     void edit_rotate (int dir); /* 1:左, 2:右, 3:上, 4:下 */
 
 public slots:
@@ -146,8 +146,8 @@ private:
         UINT fh		/* フォント高さ[dot] (Font height [dot])*/ );
     bool write_fnt_file(QString path);
     QString outFile;
-    QString inFile;
-
+    QString inFile;     //complete filename of last input or imported file
+    QString currPath;   //path of last input or imported file
     // working variables used by write_bytes();
     int ix = 0;     //used by write_bytes();
     int byte_count; //used by write_bytes();

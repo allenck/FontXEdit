@@ -51,6 +51,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(ui->idc_exp, &QPushButton::clicked, [=]{
         /* エクスポートボタン (Export button)*/
+        export_file();
     });;
 
     connect(ui->idc_pvc, &QPushButton::clicked, [=]{
@@ -455,29 +456,6 @@ long MainWindow::write_fontxfile (QString fname, BYTE flagmask)
     if(inf.suffix() == "h" )
     {
         hFormat = true;
-        if(!inf.baseName().at(0).isLetter() || inf.baseName().length() > 8)
-        {
-            bool ok;
-            QString text = QInputDialog::getText(this, "Font name:",
-                                  "The font needs a name 8 bytes or less starting with a letter",
-                                  QLineEdit::Normal, "??", &ok);
-            if(!ok)
-                return 0;
-            if(!(text.length() > 0 && text.at(0).isLetter() && text.length() <= 8 ))
-            {
-                int rslt = QMessageBox::critical(this, "Error", "An invalid name was entered. ", QMessageBox::Cancel, QMessageBox::Retry);
-                switch (rslt) {
-                case QMessageBox::Cancel:
-                    return -1;
-                case QMessageBox::Retry:
-                    write_fontxfile (fname, flagmask);
-                    return 0;
-                default:
-                    break;
-                }
-            }
-            fontName = text;
-        }
     }
 
     ix = 0;     //used by write_bytes();
@@ -497,18 +475,18 @@ long MainWindow::write_fontxfile (QString fname, BYTE flagmask)
         mode = QIODevice::WriteOnly | QIODevice::Truncate;
 
     }
-    h = new QFile(outFile);
+    h = new QFile(fname);
     if(!h->open(mode))
     {
         qDebug() <<"unable to open output " << fname;
-        exit(-1);
+        QMessageBox::critical(this, tr("Error"), tr("Unable to open output fl %1").arg(fname), QMessageBox::Ok);
+        return (-1);
     }
-    if(hFormat)
-        strm = new QTextStream(h);
-
 
     if(hFormat)
     {
+        strm = new QTextStream(h);
+
         strm->setCodec("UTF-8");
         strm->seek(0);
         *strm << header;
@@ -659,10 +637,15 @@ UINT MainWindow::load_file (bool opn
     if(opn)
     {
         fileName = QFileDialog::getOpenFileName(this,
-            tr("Open Font File"), QDir::homePath(), tr("Font Files (*.fnt)"));
+            tr("Open Font File"), currPath, tr("Font Files (*.fnt)"));
         if(fileName.isEmpty())
-            return 0;
+            return 0;   // cancel if nofile selected
+
     }
+    QFileInfo inf(fileName);
+    inFile = inf.absoluteFilePath();
+    currPath = inf.path();
+
     /* 選択したファイルを全部読み込む(Read all selected files) */
     f = read_fontxfile(fileName);
     ui->idc_pvc->setEnabled(true);
@@ -837,9 +820,13 @@ void MainWindow::import_file (
             QMessageBox::critical(this, Str[16][Loc], QString(Str[15][Loc]).arg(nc), QMessageBox::Ok);
             ui->idc_pvc->setEnabled(true);
             ui->idc_exp->setEnabled(true);
-            inFile = fileName;
             QFileInfo inf(fileName);
+            inFile = inf.absoluteFilePath();
+            currPath = inf.path();
             setWindowTitle(inf.baseName());
+            if(inf.baseName().at(0).isLetter() && inf.baseName().length() <= 8)
+                fontName = inf.baseName();
+            FontFile[Dbcs] = currPath + QDir::separator() + inf.fileName();
         }
     }
     else {
@@ -852,27 +839,32 @@ long MainWindow::write_vlcdfile (
     QString fname,
     int szinfo )
 {
-#if 0
+#if 1
     DWORD i, bw, fw, fh, fhb, hc, vc, bc;
     BYTE d, bms, bmd, *fnt;
     BYTE buf[MAX_FONT_SQ * MAX_FONT_SQ / 8], *wp;
-    HANDLE h;
+    QFile* h;
 
-    h = CreateFile(fname, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (h == INVALID_HANDLE_VALUE) return -1;
+    //h = CreateFile(fname, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    //if (h == INVALID_HANDLE_VALUE) return -1;
+    h = new QFile(fname);
+    if(!h->open(QIODevice::WriteOnly | QIODevice::Truncate))
+        return -1;
 
     fw = FontWidth[0]; fh = FontHeight[0];
     fhb = (fh + 7) / 8;
     if (szinfo) {	/* サイズ情報 {x,y} */
         buf[0] = (BYTE)fw; buf[1] = (BYTE)fh;
-        WriteFile(h, buf, 2, &bw, 0);
+        //WriteFile(h, buf, 2, &bw, 0);
+        bw = h->write((char*)buf,2);
     }
 
     for (i = 0; i < 256; i++) {
         wp = buf;
         for (vc = 0; vc < fhb; vc++) {
             for (hc = 0; hc < fw; hc++) {
-                fnt = &FontImage[i][vc * 8][hc / 8];
+                //fnt = &FontImage[i][vc * 8][hc / 8];
+                fnt = fontMap.value(i) + vc*8 + hc/8;
                 bms = 0x80 >> (hc % 8);
                 bc = (fh < vc * 8) ? fh - vc * 8 : 8;
                 d = 0; bmd = 1;
@@ -884,10 +876,12 @@ long MainWindow::write_vlcdfile (
                 *wp++ = d;
             }
         }
-        WriteFile(h, buf, fw * fhb, &bw, 0);
+        //WriteFile(h, buf, fw * fhb, &bw, 0);
+        bw = h->write((char*)buf,fw * fhb);
     }
 
-    CloseHandle(h);
+    //CloseHandle(h);
+    h->close();
 #endif
     return 256;
 }
@@ -899,85 +893,96 @@ void MainWindow::export_file (
     //HWND hwnd	/* メインウィンドウのハンドル */
 )
 {
-#if 0
-    OPENFILENAME fn;
-    TCHAR snf[_MAX_PATH], txf[_MAX_PATH];
-    LPCTSTR mes = Str[26][Loc];
+#if 1
+//    OPENFILENAME fn;
+//    TCHAR snf[_MAX_PATH], txf[_MAX_PATH];
+//    LPCTSTR mes = Str[26][Loc];
     long nc;
 
 
-    fn.lStructSize = sizeof (OPENFILENAME);
-    fn.Flags = OFN_OVERWRITEPROMPT;
-    fn.hwndOwner = hwnd;
-    fn.lpstrTitle = Str[17][Loc];
-    fn.lpstrInitialDir = 0;
-    fn.lpstrFilter = Str[18][Loc];
-    fn.lpstrCustomFilter = 0;
-    fn.nFilterIndex = 0;
-    fn.lpstrDefExt = 0;
-    fn.lpstrFile = snf;
-    fn.nMaxFile = sizeof snf;
-    fn.lpstrFileTitle = 0;
-    snf[0] = 0;
-    if (!GetSaveFileName(&fn)) return;
-
+//    fn.lStructSize = sizeof (OPENFILENAME);
+//    fn.Flags = OFN_OVERWRITEPROMPT;
+//    fn.hwndOwner = hwnd;
+//    fn.lpstrTitle = Str[17][Loc];
+//    fn.lpstrInitialDir = 0;
+//    fn.lpstrFilter = Str[18][Loc];
+//    fn.lpstrCustomFilter = 0;
+//    fn.nFilterIndex = 0;
+//    fn.lpstrDefExt = 0;
+//    fn.lpstrFile = snf;
+//    fn.nMaxFile = sizeof snf;
+//    fn.lpstrFileTitle = 0;
+//    snf[0] = 0;
+//    if (!GetSaveFileName(&fn)) return;
+    QString mes;
+    QString selectedFilter;
+    QString snf = QFileDialog::getSaveFileName(this, tr("Export file"), currPath, tr("1-Vertical byte configuration LCD without size header(*.lcd));;2-Vertical byte configuration LCD with size header(*.lcd));;3-FONTX file with only specified characters(*.fnt)"),&selectedFilter);
+    if(snf.isEmpty())
+        return;
     nc = 0;
-    switch (fn.nFilterIndex) {
-    case 1:	/* 垂直バイト構成LCD用(サイズヘッダなし) */
+    switch (selectedFilter.at(0).digitValue()) {
+    case 1:	/* 垂直バイト構成LCD用(サイズヘッダなし) (For vertical byte configuration LCD (without size header)*/
         if (Dbcs) {	/* 半角専用 */
             mes = Str[19][Loc];
         } else {
             nc = write_vlcdfile(snf, 0);
         }
         break;
-    case 2:	/* 垂直バイト構成LCD用(サイズヘッダあり) */
+    case 2:	/* 垂直バイト構成LCD用(サイズヘッダあり) (For vertical byte configuration LCD (with size header))*/
         if (Dbcs) {	/* 半角専用 */
             mes = Str[19][Loc];
         } else {
             nc = write_vlcdfile(snf, 1);
         }
         break;
-    case 3:	/* 指定文字のみ集めたFONTXファイル */
+    case 3:	/* 指定文字のみ集めたFONTXファイル (FONTX file with only specified characters)*/
         if (!Dbcs) {	/* 全角専用 */
             mes = Str[27][Loc];
         } else {
-            HANDLE *h;
+            QFile *h;
             DWORD n, i;
-            BYTE *tp;
+            QByteArray tp;
             WORD wc;
 
-            fn.Flags = OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
-            fn.lpstrFile = txf;
-            fn.nMaxFile = sizeof txf;
-            fn.lpstrTitle = Str[28][Loc];
-            fn.lpstrFilter	= "Text file (*.txt)\0*.txt";
-            txf[0] = 0;
-            if (!GetOpenFileName(&fn)) return;
-            h = CreateFile(txf, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-            if (h == INVALID_HANDLE_VALUE) return;
-            for (n = 0; n < sizeof CodeStat; CodeStat[n] &= 1, n++) ;
-            tp = malloc(0x10000);
-            ReadFile(h, tp, 0x10000, &n, 0);
-            CloseHandle(h);
+//            fn.Flags = OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
+//            fn.lpstrFile = txf;
+//            fn.nMaxFile = sizeof txf;
+//            fn.lpstrTitle = Str[28][Loc];
+//            fn.lpstrFilter	= "Text file (*.txt)\0*.txt";
+//            txf[0] = 0;
+//            if (!GetOpenFileName(&fn)) return;
+//            h = CreateFile(txf, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+            QString fn = QFileDialog::getOpenFileName(this, tr("text file with cas to select"), QString(), tr("text file(*.txt"));
+            if (fn.isEmpty()) return;
+            //for (n = 0; n < sizeof CodeStat; CodeStat[n] &= 1, n++) ;
+            n = fontMap.count();
+            //tp = malloc(0x10000);
+            //ReadFile(h, tp, 0x10000, &n, 0);
+            tp= h->readAll();
+            n = tp.count();
+            //CloseHandle(h);
+            h->close();
             i = 0;
             while (i < n) {
-                wc = tp[i++];
+                wc = (WORD)tp.at(i);
                 if (i < n && IS_DBC1(wc) && IS_DBC2(tp[i])) {
                     wc = wc << 8 | tp[i++];
-                    if (CodeStat[wc] & 1) CodeStat[wc] |= 2;
+                    //if (CodeStat[wc] & 1) CodeStat[wc] |= 2;
                 }
             }
-            free(tp);
+            //free(tp);
             nc = write_fontxfile(snf, 2);
         }
     }
 
     if (nc > 0) {
-        sprintf(snf, Str[20][Loc], nc);
-        MessageBox(hwnd, snf, Str[21][Loc], MB_OK);
+        snf = QString(Str[20][Loc]).arg(nc);
+        QMessageBox::information(this, Str[21][Loc], snf, QMessageBox::Ok);
     } else {
-        DeleteFile(snf);
-        MessageBox(hwnd, mes, Str[21][Loc], MB_OK | MB_ICONEXCLAMATION);
+        //DeleteFile(snf);
+        QFile f(snf);
+        f.remove();
+        QMessageBox::critical(this, Str[21][Loc], mes, QMessageBox::Ok);
     }
 #endif
 }
@@ -1011,12 +1016,87 @@ bool MainWindow::save_file (
 //	} else {	/* 上書き保存の時は現在のファイル名を使用 */
 //		strcpy(svf, FontFile[Dbcs]);
 //	}
-    QString svf = QFileDialog::getSaveFileName(this, Dbcs ? Str[4][Loc] : Str[5][Loc], QString(),tr("FONTX file (*.fnt );;C/C++ header file(^.h)"));
+
+    QString path = currPath;
+    if(mode || !FontFile[Dbcs].isEmpty())
+        path = FontFile[Dbcs];
+    if(path.contains("."))
+        path = path.mid(0, path.indexOf("."));
+    QString selectedFilter;
+    QString svf = QFileDialog::getSaveFileName(this, Dbcs ? Str[4][Loc] : Str[5][Loc], path,
+            tr("FONTX file (*.fnt );;C/C++ header file(*.h)"), &selectedFilter);
+
 
     QFileInfo inf(svf);
-    //create filename for C .h file
-    outFile = inf.path() + QDir::separator() + inf.baseName() + ".h";
-    fontName = inf.baseName();
+    if(!(inf.suffix() == "fnt" || inf.suffix() == "h"))
+    {
+        if(inf.suffix().isEmpty())
+        {
+            if(selectedFilter.startsWith("FONTX"))
+                svf.append(".fnt");
+            else
+            {
+                svf.append(".h");
+            }
+        }
+        else
+        {
+            QMessageBox::critical(this, tr("Error"), tr("The file must have either \"fnt\" or \"h\" extension"), QMessageBox::Ok);
+            return -1;
+        }
+        inf = QFileInfo(svf);
+        if(inf.suffix() == "h" )
+        {
+            bool cont = true;
+            while (cont)
+            {
+                if(!inf.baseName().at(0).isLetter() || inf.baseName().length() > 8)
+                {
+                    bool ok;
+                    QString text = QInputDialog::getText(this, "Font name:",
+                                          "The font needs a name 8 bytes or less starting with a letter\nThe base filename will also be changed to this.",
+                                          QLineEdit::Normal, "??", &ok);
+                    if(!ok)
+                        return 0;
+                    if(!(text.length() > 0 && text.at(0).isLetter() && text.length() <= 8 ))
+                    {
+                        int rslt = QMessageBox::critical(this, "Error", "An invalid name was entered. ", QMessageBox::Cancel, QMessageBox::Retry);
+                        switch (rslt) {
+                        case QMessageBox::Cancel:
+                            return -1;
+                        case QMessageBox::Retry:
+                            continue;
+                        default:
+                            continue;
+                        }
+                    }
+                    fontName = text;
+                    svf = inf.path() + QDir::separator() + text + ".h";
+                    inf = QFileInfo(svf);
+                    if(inf.exists())
+                    {
+                        int rslt = QMessageBox::question(this, tr("File exists"), tr("The file exists. Do you wish to overwrite it?"), QMessageBox::Yes, QMessageBox::Retry, QMessageBox::Cancel);
+                        switch(rslt)
+                        {
+                        case QMessageBox::Yes:
+                            cont = false;
+                            break;
+                        case QMessageBox::Cancel:
+                            return -1;
+                        case QMessageBox::Retry:
+                            break;
+                        }
+                    }
+                    break;
+                }
+                else
+                {
+                    fontName = inf.baseName();
+                    break;
+                }
+            }
+        }
+    }
     if (write_fontxfile(svf, 1) > 1) {
         if (mode) {
             FontFile[Dbcs] = svf;
@@ -1026,7 +1106,7 @@ bool MainWindow::save_file (
     } else {
         QFile file (svf);
         file.remove();
-        QMessageBox::critical(this, Str[7][Loc], Str[8][Loc], QMessageBox::Ok);
+        QMessageBox::critical(this, Str[8][Loc], Str[7][Loc], QMessageBox::Ok);
         return false;
     }
 }
