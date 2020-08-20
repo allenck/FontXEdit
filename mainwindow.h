@@ -137,7 +137,13 @@ private:
         QTextStream* strm,
         WORD code,	/* 文字コード (Character code)*/
         UINT fw,	/* フォント幅[dot] (Font width [dot])*/
-        UINT fh		/* フォント高さ[dot] (Font height [dot])*/    );
+        UINT fh		/* フォント高さ[dot] (Font height [dot])*/ );
+    void write_font (
+        //QFile* h,	/* ファイルハンドル (File handle)*/
+        QFile* h,
+        WORD code,	/* 文字コード (Character code)*/
+        UINT fw,	/* フォント幅[dot] (Font width [dot])*/
+        UINT fh		/* フォント高さ[dot] (Font height [dot])*/ );
     bool write_fnt_file(QString path);
     QString outFile;
     QString inFile;

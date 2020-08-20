@@ -10,6 +10,7 @@
 #include <previewdialog.h>
 #include <QWindow>
 #include <QStringList>
+#include <QInputDialog>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -135,7 +136,7 @@ void MainWindow::write_font (
 
 
     //s = FontImage[code][0];
-    s = fontMap.value(QChar(code));
+    s = fontMap.value(QChar(code), new BYTE[0, MAX_FONT_WB * MAX_FONT_SQ]);
     d = buf;
     fwb = (fw + 7) / 8;
     for (v = 0; v < fh; v++) {
@@ -146,6 +147,32 @@ void MainWindow::write_font (
     //WriteFile(h, buf, fwb * fh, &bw, 0);
     write_bytes(strm, (BYTE*)buf, fwb * fh);
     //h->write((const char *)buf, fwb * fh);
+}
+void MainWindow::write_font (
+    //QFile* h,	/* ファイルハンドル (File handle)*/
+    QFile* h,
+    WORD code,	/* 文字コード (Character code)*/
+    UINT fw,	/* フォント幅[dot] (Font width [dot])*/
+    UINT fh		/* フォント高さ[dot] (Font height [dot])*/)
+{
+    char buf[MAX_FONT_WB * MAX_FONT_SQ], *d;
+    BYTE* s;
+    DWORD bw;
+    UINT v, fwb;
+
+
+    //s = FontImage[code][0];
+    s = fontMap.value(QChar(code), new BYTE[0, MAX_FONT_WB * MAX_FONT_SQ]);
+    d = buf;
+    fwb = (fw + 7) / 8;
+    for (v = 0; v < fh; v++) {
+        //CopyMemory(d, s, fwb);
+        memcpy(d, s, fwb);
+        d += fwb; s += MAX_FONT_WB;
+    }
+    //WriteFile(h, buf, fwb * fh, &bw, 0);
+    //write_bytes(strm, (BYTE*)buf, fwb * fh);
+    h->write((const char *)buf, fwb * fh);
 }
 
 /* フォント情報の表示更新 */
@@ -421,6 +448,37 @@ long MainWindow::write_fontxfile (QString fname, BYTE flagmask)
     DWORD bw, nr, r;
     UINT wf, hf;
     long nfnt;
+    bool hFormat = false;
+    QFileInfo inf(fname);
+    QTextStream* strm = nullptr;
+
+    if(inf.suffix() == "h" )
+    {
+        hFormat = true;
+        if(!inf.baseName().at(0).isLetter() || inf.baseName().length() > 8)
+        {
+            bool ok;
+            QString text = QInputDialog::getText(this, "Font name:",
+                                  "The font needs a name 8 bytes or less starting with a letter",
+                                  QLineEdit::Normal, "??", &ok);
+            if(!ok)
+                return 0;
+            if(!(text.length() > 0 && text.at(0).isLetter() && text.length() <= 8 ))
+            {
+                int rslt = QMessageBox::critical(this, "Error", "An invalid name was entered. ", QMessageBox::Cancel, QMessageBox::Retry);
+                switch (rslt) {
+                case QMessageBox::Cancel:
+                    return -1;
+                case QMessageBox::Retry:
+                    write_fontxfile (fname, flagmask);
+                    return 0;
+                default:
+                    break;
+                }
+            }
+            fontName = text;
+        }
+    }
 
     ix = 0;     //used by write_bytes();
     byte_count; //used by write_bytes();
@@ -429,20 +487,35 @@ long MainWindow::write_fontxfile (QString fname, BYTE flagmask)
     //h = CreateFile(fname, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     //if (h == INVALID_HANDLE_VALUE) return -1;
 
+    QIODevice::OpenMode mode;
+    if(hFormat)
+    {
+        mode = QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text;
+    }
+    else
+    {
+        mode = QIODevice::WriteOnly | QIODevice::Truncate;
+
+    }
     h = new QFile(outFile);
-    if(!h->open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text))
+    if(!h->open(mode))
     {
         qDebug() <<"unable to open output " << fname;
         exit(-1);
     }
-    QTextStream* strm = new QTextStream(h);
+    if(hFormat)
+        strm = new QTextStream(h);
 
-    strm->setCodec("UTF-8");
-    strm->seek(0);
-    *strm << header;
-    *strm << "const unsigned char ";
-    *strm << fontName;
-    *strm  << "[] = {\n";
+
+    if(hFormat)
+    {
+        strm->setCodec("UTF-8");
+        strm->seek(0);
+        *strm << header;
+        *strm << "const unsigned char ";
+        *strm << fontName;
+        *strm  << "[] = {\n";
+    }
 
     wf = FontWidth[Dbcs]; hf = FontHeight[Dbcs];
 
@@ -451,8 +524,10 @@ long MainWindow::write_fontxfile (QString fname, BYTE flagmask)
     memcpy((char *)buf+6, fontName.toLatin1(), fontName.length());
     buf[14] = wf; buf[15] = hf; buf[16] = Dbcs;
     //WriteFile(h, buf, 17, &bw, 0);
-    write_bytes( strm, buf, 17); // write font metadata
-    //h->write((const char *)buf, 17);
+    if(hFormat)
+        write_bytes( strm, buf, 17); // write font metadata
+    else
+        h->write((const char *)buf, 17);
 
     if (Dbcs) {	/* 全角フォント (Full-width font)*/
         /* コードレンジテーブルを作成 (Create code range table)*/
@@ -473,9 +548,10 @@ long MainWindow::write_fontxfile (QString fname, BYTE flagmask)
 
         /* レンジ数を書き込み */
         buf[0] = (BYTE)nr;
-        //WriteFile(h, buf, 1, &bw, 0);
-        write_bytes(strm, buf, 1);
-        //h->write((const char *)buf, 1);
+        if(hFormat)
+            write_bytes(strm, buf, 1);
+        else
+            h->write((const char *)buf, 1);
         /* レンジテーブルを書き込み (Write range table)*/
         for (i = 0; i < nr; i++) {
             sr = range[i][0];
@@ -483,9 +559,10 @@ long MainWindow::write_fontxfile (QString fname, BYTE flagmask)
             qDebug() << QString("range 0x%1 -> 0x%2").arg(sr,2,16).arg(er,2,16);
             buf[1] = (BYTE)(sr >> 8); buf[0] = (BYTE)sr;
             buf[3] = (BYTE)(er >> 8); buf[2] = (BYTE)er;
-            //WriteFile(h, buf, 4, &bw, 0);
-            write_bytes(strm, buf, 4);
-            //h->write((const char *)buf, 4);
+            if(hFormat)
+                write_bytes(strm, buf, 4);
+            else
+                h->write((const char *)buf, 4);
         }
 
         /* フォントイメージの書き込み (Write font image)*/
@@ -494,21 +571,32 @@ long MainWindow::write_fontxfile (QString fname, BYTE flagmask)
             sr = range[i][0];
             er = range[i][1];
             do {
-                write_font(strm, sr, wf, hf);
+                if(hFormat)
+                    write_font(strm, sr, wf, hf);
+                else
+                    write_font(h, sr, wf, hf);
+
                 nfnt++;
             } while (sr++ < er);
         }
     } else {	/* 半角フォント (Half-width font)*/
         /* フォントイメージの書き込み (Write font image)*/
-        for (i = 0; i < 256; write_font(strm, i++, wf, hf)) ;
+        if(hFormat)
+            for (i = 0; i < 256; write_font(strm, i++, wf, hf)) ;
+        else
+            for (i = 0; i < 256; write_font(h, i++, wf, hf)) ;
+
         nfnt = 256;
     }
 
-    *strm << "\n};\n";
-    *strm << "unsigned int " << fontName.toLatin1() << "_size = " << QString::number(byte_count).toLatin1() << ";\n";
+    if(hFormat)
+    {
+        *strm << "\n};\n";
+        *strm << "unsigned int " << fontName.toLatin1() << "_size = " << QString::number(byte_count).toLatin1() << ";\n";
+    }
     //CloseHandle(h);
     h->close();
-    if(Dbcs)
+    if(hFormat && Dbcs)
     {
         unsigned int nc, sb, eb;
         char bc;
@@ -923,7 +1011,7 @@ bool MainWindow::save_file (
 //	} else {	/* 上書き保存の時は現在のファイル名を使用 */
 //		strcpy(svf, FontFile[Dbcs]);
 //	}
-    QString svf = QFileDialog::getSaveFileName(this, Dbcs ? Str[4][Loc] : Str[5][Loc], QString(),tr("FONTX file (*.fnt "));
+    QString svf = QFileDialog::getSaveFileName(this, Dbcs ? Str[4][Loc] : Str[5][Loc], QString(),tr("FONTX file (*.fnt );;C/C++ header file(^.h)"));
 
     QFileInfo inf(svf);
     //create filename for C .h file
