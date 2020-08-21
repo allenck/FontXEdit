@@ -21,6 +21,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     EditFont = new BYTE[MAX_FONT_SQ*MAX_FONT_WB];
     memset(EditFont, 0, MAX_FONT_SQ*MAX_FONT_WB);
+
     ui->setupUi(this);
     ui->tab->setLayout(new QVBoxLayout());
     tabWidget1 = new TabWidget(0,this);
@@ -60,6 +61,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->idc_pvc, &QPushButton::clicked, [=]{
         /* プリビューボタン (Preview button)*/
        PreviewDialog* dlg = new PreviewDialog(this);
+       dlg->setRemap(tabs.at(Dbcs)->ui->idc_remap->isChecked());
        int rslt = dlg->exec();
     });
 
@@ -743,20 +745,27 @@ long MainWindow::read_bdffile (QFile* fp)
         if (!memcmp(str, "ENCODING ", 9)) {
             s = str + 9;
             d = strtoul(s, &s, 0);
-            qDebug() << "ENCODING " << (qint32)d;
-            if (d >= 0x2121 && d <= 0x7E7E)
+            qDebug() << "ENCODING " << (qint32)d << QString(QChar(d));
+            if(tabs.at(Dbcs)->ui->idc_remap->isChecked())
             {
-                d -= 0x2121;
-                b1 = (BYTE)(d >> 8); b2 = (BYTE)d;
-                if (b1 & 1) b2 += 0x5E;
-                if (b2 >= 0x3F) b2++;
-                chr = ((b1 >> 1) << 8) + 0x8140 + b2;
-                if (chr >= 0xA000) chr += 0x4000;
-                if (!IS_DBC(chr)) chr = -1;
+                if (d >= 0x2121 && d <= 0x7E7E)
+                {
+                    d -= 0x2121;
+                    b1 = (BYTE)(d >> 8); b2 = (BYTE)d;
+                    if (b1 & 1) b2 += 0x5E;
+                    if (b2 >= 0x3F) b2++;
+                    chr = ((b1 >> 1) << 8) + 0x8140 + b2;
+                    if (chr >= 0xA000) chr += 0x4000;
+                    if (!IS_DBC(chr)) chr = -1;
+                }
+                else
+                {
+                    chr = (d < 0x100) ? (long)d : -1;
+                }
             }
             else
             {
-                chr = (d < 0x100) ? (long)d : -1;
+                chr = (long)d;
             }
             encoded_count++;
             continue;
@@ -1311,7 +1320,7 @@ void MainWindow::on_tabWidget_current_changed(int iTab)
 {
     //if (nmupdown->hdr.code != TCN_SELCHANGE) break;
     Dbcs = iTab;//(UINT)TabCtrl_GetCurSel(hTab);
-#if 0
+#if 1
     if (Dbcs > 1) Dbcs = 0;
     if (Dbcs && Loc) {
         Dbcs = 0;
@@ -1319,6 +1328,11 @@ void MainWindow::on_tabWidget_current_changed(int iTab)
         ui->idc_tab1->setCurrentIndex(0);
         QMessageBox::critical(this, "Error", "User locale is not Japanese.");
     }
+    if(!tabs.at(0)->ui->idc_remap->isChecked())
+    {
+       Dbcs = 0;
+       ui->idc_tab1->setCurrentIndex(0);
+       QMessageBox::critical(this, "Error", "Not possible if Remap checkbox is not checked!");}
 #endif
     rfsh_fontinfo();
     change_code(0);

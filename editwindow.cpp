@@ -29,13 +29,13 @@ void EditWindow::code_change(WORD code, BYTE *buffer)
     this->code = code;
     create_image();
     editFont = buffer;
-    for(int y = 0; y < fontHeight; y++)
-    {
-        for(int x=0; x < fontWidth; x++)
-        {
-            edit_draw_dot( x, y, edit_test_dot(x, y));
-        }
-    }
+//    for(int y = 0; y < fontHeight; y++)
+//    {
+//        for(int x=0; x < fontWidth; x++)
+//        {
+//            edit_draw_dot( x, y, edit_test_dot(x, y));
+//        }
+//    }
     update();
 }
 
@@ -95,14 +95,14 @@ void EditWindow::create_image()
     //hdc = BeginPaint(hwnd, &pnt);
     for (y = 0; y < fontHeight; y++) {
         for (x = 0; x < fontWidth; x++) {
-            edit_draw_dot( x, y, edit_test_dot(x, y));
+            edit_draw_dot(x, y, edit_test_dot(x, y));
         }
     }
 #if 1 // temp disable
     if(!mPoint.isNull() && ! lButton)
     {
-        edit_draw_dot( dx, dy, edit_test_dot(dx, dy) | 4);
-        edit_draw_dot(  mPoint.x(),  mPoint.y(), edit_test_dot( mPoint.x(),  mPoint.y()) | 6);
+        edit_draw_dot(dx, dy, edit_test_dot(dx, dy) | 2); // was 4
+        edit_draw_dot( mPoint.x(),  mPoint.y(), edit_test_dot( mPoint.x(),  mPoint.y()) | 2); // was 6
         mPoint = QPoint();
     }
 //    else
@@ -166,15 +166,12 @@ void EditWindow::edit_draw_dot (
     case 3:
         if (ty & 2) {
 //			EditBm[y + 1][x + 0] ^= 0x7FFF;
-            editBm->setPixel(x+0, y+1, editBm->pixel(x+0, y+1)^ 0x7FFF);
 //			EditBm[y + 1][x + 1] ^= 0x7FFF;
-            editBm->setPixel(x+1, y+1, editBm->pixel(x+1, y+1)^ 0x7FFF);
 //			EditBm[y + 1][x + 2] ^= 0x7FFF;
-            editBm->setPixel(x+2, y+1, editBm->pixel(x+2, y+1)^ 0x7FFF);
 //			EditBm[y + 0][x + 1] ^= 0x7FFF;
-            editBm->setPixel(x+1, y+0, editBm->pixel(x+1, y+0)^ 0x7FFF);
 //			EditBm[y + 2][x + 1] ^= 0x7FFF;
-            editBm->setPixel(x+1, y+2, editBm->pixel(x+1, y+2)^ 0x7FFF);
+            qPainter.drawLine(x+1, y+0, x+1, y+2);
+            qPainter.drawLine(x+0, y+1, x+1, y+1);
         }
         if (ty & 4) {
 //			StretchDIBits(hdc, x, y, 3, 3, x, EDIT_WINDOW_SQ - y - EditDotSize, 3, 3, EditBm[0], &EditBi, DIB_RGB_COLORS, SRCCOPY);
@@ -186,16 +183,15 @@ void EditWindow::edit_draw_dot (
 
     case 5:
 //		EditBm[y + 2][x + 2] ^= 0x7FFF;
-        editBm->setPixel(x+2, y+2, editBm->pixel(x+2, y+2)^0x7FFF);
+        //editBm->setPixel(x+2, y+2, editBm->pixel(x+2, y+2)^0x7FFF);
+        qPainter.drawPoint(x+2, y+2);
         if (ty & 2) {
 //			EditBm[y + 2][x + 1] ^= 0x7FFF;
-            editBm->setPixel(x+1, y+2, editBm->pixel(x+1, y+2));
 //			EditBm[y + 2][x + 3] ^= 0x7FFF;
-            editBm->setPixel(x+3, y+2, editBm->pixel(x+3, y+2));
 //			EditBm[y + 1][x + 2] ^= 0x7FFF;
-            editBm->setPixel(x+2, y+1, editBm->pixel(x+2, y+1));
 //			EditBm[y + 3][x + 2] ^= 0x7FFF;
-            editBm->setPixel(x+2, y+3, editBm->pixel(x+2, y+3));
+            qPainter.drawLine(x+2, y+1, x+2, y+3);
+            qPainter.drawLine(x+1, y+2, x+3, y+2);
         }
         if (ty & 4) {
 //			StretchDIBits(hdc, x, y, 5, 5, x, EDIT_WINDOW_SQ - y - EditDotSize, 5, 5, EditBm[0], &EditBi, DIB_RGB_COLORS, SRCCOPY);
@@ -207,24 +203,19 @@ void EditWindow::edit_draw_dot (
 
     case 7:
 //		EditBm[y + 3][x + 3] ^= 0x7FFF;
-        editBm->setPixel(x+3, y+3, editBm->pixel(x+3, y+3)^0x7FFF);
+        //editBm->setPixel(x+3, y+3, editBm->pixel(x+3, y+3)^0x7FFF);
+        qPainter.drawPoint(x+3, y+3);
         if (ty & 2) {
 //			EditBm[y + 3][x + 1] ^= 0x7FFF;
-            editBm->setPixel(x+1, y+3, editBm->pixel(x+1, y+3)^ 0x7FFF);
 //			EditBm[y + 3][x + 2] ^= 0x7FFF;
-            editBm->setPixel(x+2, y+3, editBm->pixel(x+2, y+3)^ 0x7FFF);
 //			EditBm[y + 3][x + 4] ^= 0x7FFF;
-            editBm->setPixel(x+4, y+3, editBm->pixel(x+4, y+3)^ 0x7FFF);
 //			EditBm[y + 3][x + 5] ^= 0x7FFF;
-            editBm->setPixel(x+5, y+3, editBm->pixel(x+5, y+3)^ 0x7FFF);
 //			EditBm[y + 1][x + 3] ^= 0x7FFF;
-            editBm->setPixel(x+3, y+1, editBm->pixel(x+3, y+1)^ 0x7FFF);
 //			EditBm[y + 2][x + 3] ^= 0x7FFF;
-            editBm->setPixel(x+3, y+2, editBm->pixel(x+3, y+2)^ 0x7FFF);
 //			EditBm[y + 4][x + 3] ^= 0x7FFF;
-            editBm->setPixel(x+3, y+4, editBm->pixel(x+3, y+4)^ 0x7FFF);
 //			EditBm[y + 5][x + 3] ^= 0x7FFF;
-            editBm->setPixel(x+3, y+5, editBm->pixel(x+3, y+5)^ 0x7FFF);
+            qPainter.drawLine(x+3, y+1, x+3, y+5);
+            qPainter.drawLine(x+1, y+3, x+5, y+3);
         }
         if (ty & 4) {
 //			StretchDIBits(hdc, x, y, 7, 7, x, EDIT_WINDOW_SQ - y - EditDotSize, 7, 7, EditBm[0], &EditBi, DIB_RGB_COLORS, SRCCOPY);
@@ -236,32 +227,22 @@ void EditWindow::edit_draw_dot (
 
     case 9:
 //		EditBm[y + 4][x + 4] ^= 0x7FFF;
-//        editBm->setPixel(x+4, y+4, editBm->pixel(x+4, y+4)^0x7FFF);
+        //editBm->setPixel(x+4, y+4, editBm->pixel(x+4, y+4)^0x7FFF);
+        qPainter.setPen(Qt::red);
+        qPainter.drawPoint(x+4, y+4);
         if (ty & 2) {
-////			EditBm[y + 4][x + 1] ^= 0x7FFF;
-//            editBm->setPixel(x+1, y+4, editBm->pixel(x+1, y+4)^ 0x7FFF);
-////			EditBm[y + 4][x + 2] ^= 0x7FFF;
-//            editBm->setPixel(x+2, y+4, editBm->pixel(x+2, y+4)^ 0x7FFF);
-////			EditBm[y + 4][x + 3] ^= 0x7FFF;
-//            editBm->setPixel(x+3, y+4, editBm->pixel(x+3, y+4)^ 0x7FFF);
-////			EditBm[y + 4][x + 5] ^= 0x7FFF;
-//            editBm->setPixel(x+5, y+4, editBm->pixel(x+5, y+4)^ 0x7FFF);
-////			EditBm[y + 4][x + 6] ^= 0x7FFF;
-//            editBm->setPixel(x+6, y+4, editBm->pixel(x+1, y+4)^ 0x7FFF);
-////			EditBm[y + 4][x + 7] ^= 0x7FFF;
-//            editBm->setPixel(x+7, y+4, editBm->pixel(x+1, y+4)^ 0x7FFF);
-////			EditBm[y + 1][x + 4] ^= 0x7FFF;
-//            editBm->setPixel(x+4, y+1, editBm->pixel(x+4, y+1)^ 0x7FFF);
-////			EditBm[y + 2][x + 4] ^= 0x7FFF;
-//            editBm->setPixel(x+4, y+2, editBm->pixel(x+4, y+2)^ 0x7FFF);
-////			EditBm[y + 3][x + 4] ^= 0x7FFF;
-//            editBm->setPixel(x+4, y+3, editBm->pixel(x+4, y+3)^ 0x7FFF);
-////			EditBm[y + 5][x + 4] ^= 0x7FFF;
-//            editBm->setPixel(x+4, y+5, editBm->pixel(x+4, y+5)^ 0x7FFF);
-////			EditBm[y + 6][x + 4] ^= 0x7FFF;
-//            editBm->setPixel(x+4, y+6, editBm->pixel(x+4, y+6)^ 0x7FFF);
-////			EditBm[y + 7][x + 4] ^= 0x7FFF;
-//            editBm->setPixel(x+4, y+7, editBm->pixel(x+4, y+7)^ 0x7FFF);
+//			EditBm[y + 4][x + 1] ^= 0x7FFF;
+//			EditBm[y + 4][x + 2] ^= 0x7FFF;
+//			EditBm[y + 4][x + 3] ^= 0x7FFF;
+//			EditBm[y + 4][x + 5] ^= 0x7FFF;
+//			EditBm[y + 4][x + 6] ^= 0x7FFF;
+//			EditBm[y + 4][x + 7] ^= 0x7FFF;
+//			EditBm[y + 1][x + 4] ^= 0x7FFF;
+//			EditBm[y + 2][x + 4] ^= 0x7FFF;
+//			EditBm[y + 3][x + 4] ^= 0x7FFF;
+//			EditBm[y + 5][x + 4] ^= 0x7FFF;
+//			EditBm[y + 6][x + 4] ^= 0x7FFF;
+//			EditBm[y + 7][x + 4] ^= 0x7FFF;
             qPainter.drawLine(x+4, y+1, x+4, y+7);
             qPainter.drawLine(x+1, y+4, x+7, y+4);
         }
@@ -305,8 +286,8 @@ UINT EditWindow::edit_test_dot (
             lButton = (event->buttons()&Qt::LeftButton == Qt::LeftButton);
     //                    hdc = GetDC(hwnd);
 //            QPainter* paint = new QPainter(this);
-            edit_draw_dot(dx, dy, edit_test_dot(dx, dy) | 2);
-            edit_draw_dot(x,  y, edit_test_dot( x,  y) | 2);
+//            edit_draw_dot(dx, dy, edit_test_dot(dx, dy) | 2);
+//            edit_draw_dot(x,  y, edit_test_dot( x,  y) | 2);
             dx = x; dy = y;
             mPoint = QPoint(x,y);
             update();
@@ -329,7 +310,7 @@ UINT EditWindow::edit_test_dot (
                 sr = edit_test_dot(x, y) ? 1 : 0;
                 mainWindow->edit_set_dot(x, y, sr);
 //                hdc = GetDC(hwnd);
-                edit_draw_dot(x, y, sr | 6);
+//                edit_draw_dot(x, y, sr | 6);
 
                 mainWindow->edit_set_changed(true);
                 dx = x; dy = y;

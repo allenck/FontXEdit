@@ -29,10 +29,20 @@ void PreviewDialog::resizeEvent(QResizeEvent *event)
 }
 /*static*/ WORD PreviewWidget::col = 0;
 
+void PreviewDialog:: setRemap(bool b){
+    previewWidget->setRemap(b);
+}
+
+void PreviewWidget::setRemap(bool b)
+{
+    this->bRemap = b;
+}
+
 void PreviewWidget::paintEvent(QPaintEvent *evt)
 {
     int cix = 0;
-    str = previewDialog->ui->idc_pvsrc->toPlainText().toLocal8Bit();
+    //str = previewDialog->ui->idc_pvsrc->toPlainText().toLocal8Bit();
+    str = previewDialog->ui->idc_pvsrc->toPlainText();
     cc = str.length();
     //GetClientRect(hwnd, &szw);
     szw = evt->rect();
@@ -50,22 +60,34 @@ void PreviewWidget::paintEvent(QPaintEvent *evt)
             if (!cc) code = 0;
             if (code)
             {
-                code = (BYTE)str[cix++]; cc--;
+                //code = (BYTE)str[cix++]; cc--;
+                code = str[cix++].unicode(); cc--;
                 if (code == 13) {
                     if (cc && code == 10) {
                         cix++; cc--;
                     }
                     code = 0;
-                } else {
-                    if (!mainWindow->Loc && cc && IS_DBC1(code) && IS_DBC2(str[cix])) {
-                        code = code << 8 | (BYTE)str[cix++]; cc--;
+                }
+                else
+                {
+                    if (bRemap && !mainWindow->Loc && cc && IS_DBC1(code) && IS_DBC2(str[cix].toLatin1())) {
+                        //code = code << 8 | (BYTE)str[cix++]; cc--;
+                        code = code << 8 | str[cix++].unicode(); cc--;
                     }
                 }
             }
-            fw = mainWindow->FontWidth[(code >= 0x100) ? 1 : 0];
-            fh = mainWindow->FontHeight[(code >= 0x100) ? 1 : 0];
+            if(bRemap)
+            {
+                fw = mainWindow->FontWidth[(code >= 0x100) ? 1 : 0];
+                fh = mainWindow->FontHeight[(code >= 0x100) ? 1 : 0];
+            }
+            else
+            {
+                fw = mainWindow->FontWidth[0];
+                fh = mainWindow->FontHeight[0];
+            }
             if(code > 0)
-                qDebug() << "pv_put_font " << szw << " x:" << x << " y:" << y << fw << fh  << QChar(code);
+                qDebug() << "pv_put_font " << szw << " x:" << x << " y:" << y << fw << fh  << QChar(code) << QString(QChar(code));
             pv_put_font(szw, x, y, fw, fh, code?code:32, col);
             x += fw;
         }
@@ -95,6 +117,7 @@ void PreviewWidget::pv_put_font (
     BYTE d = 0;
     //BITMAPINFO bmi;
     QPainter paint(img);
+    WORD save_code = code;
     /* 描画先の右端下端でクリップ (Clip at the right bottom edge of the drawing destination)*/
     if (x >= rect.right() || y >= rect.bottom())
         return;
@@ -106,7 +129,10 @@ void PreviewWidget::pv_put_font (
     /* フォントイメージの作成 (Creating a font image)*/
     unsigned char* FontImage = mainWindow->fontMap.value(code);
     if (code < 0x20 || /*!(CodeStat[code] & 1)*/ !mainWindow->fontMap.contains(code))
+    {
         code = 0x20;
+        FontImage = mainWindow->fontMap.value(code);
+    }
     for (ih = 0; ih < fh; ih++)
     {
         for (iw = 0; iw < fw; iw++) {
@@ -117,7 +143,7 @@ void PreviewWidget::pv_put_font (
             paint.setPen((d & 0x80) ? col : ~col);
             paint.drawPoint(iw+x, ih+y);
             if(code > 0x20)
-             qDebug() << "setPixel" << iw+x << ih+y <<  ((d & 0x80) ? 0 : 1) << QChar(code);
+             qDebug() << "setPixel" << iw+x << ih+y <<  ((d & 0x80) ? 0 : 1) << QString(QChar(code));
             d <<= 1;
         }
     }

@@ -12,6 +12,8 @@ TabWidget::TabWidget(BYTE Dbcs, QWidget *parent) :
     this-> Dbcs = Dbcs;
     ui->idc_fw->setValue(mainWindow->FontWidth[mainWindow->Dbcs]);
     ui->idc_fh->setValue(mainWindow->FontHeight[mainWindow->Dbcs]);
+    if(Dbcs)
+        ui->idc_remap->setHidden(true);
 
     WORD code;
     code = mainWindow->CurrentCode[mainWindow->Dbcs];
@@ -68,6 +70,7 @@ TabWidget::TabWidget(BYTE Dbcs, QWidget *parent) :
            mainWindow->EditFont[i] = -mainWindow->EditFont[i];
         mainWindow->edit_set_changed(true);
         //InvalidateRect(hEdit, 0, TRUE);
+        update();
     });
 
     connect(ui->idc_clr, &QPushButton::clicked, [=]{
@@ -76,6 +79,7 @@ TabWidget::TabWidget(BYTE Dbcs, QWidget *parent) :
             mainWindow->EditFont[i] = (char)0;
         mainWindow->edit_set_changed(true);
         //InvalidateRect(hEdit, 0, TRUE);
+        update();
     });
 
     connect(ui->idc_code, &QLineEdit::editingFinished, [=]{
@@ -85,10 +89,14 @@ TabWidget::TabWidget(BYTE Dbcs, QWidget *parent) :
      mainWindow->get_font(nHex, mainWindow->EditFont);
      mainWindow->change_code(0);
      emit code_changed(mainWindow->Dbcs, nHex);
+     update();
     });
     connect(mainWindow, SIGNAL(size_change(int,int,int)), this, SLOT(size_change(int,int,int)));
     connect(ui->idc_fw, SIGNAL(valueChanged(int)), this, SLOT(idc_fw_value_changed(int)));
     connect(ui->idc_fh, SIGNAL(valueChanged(int)), this, SLOT(idc_fh_value_changed(int)));
+    connect(ui->idc_remap, &QCheckBox::clicked, [=]{
+        mainWindow->tabs.at(1)->setVisible(ui->idc_remap->isChecked());
+    });
 
     ui->frame_2->setLayout(new QVBoxLayout());
     ui->frame_2->layout()->addWidget(new EditWindow(mainWindow->Dbcs, mainWindow->FontHeight[mainWindow->Dbcs],

@@ -16,6 +16,7 @@ class PreviewDialog : public QDialog
 public:
     explicit PreviewDialog(QWidget *parent = 0);
     ~PreviewDialog();
+    void setRemap(bool b);
 
 private:
     Ui::PreviewDialog *ui;
@@ -37,6 +38,8 @@ public:
         QCursor cursor_default = QCursor(cursor_pixmap, 0, 0);
         setCursor(cursor_default);
     }
+    void setRemap(bool b);
+
 private:
     void paintEvent(QPaintEvent* evt);
     void pv_put_font (
@@ -53,11 +56,14 @@ private:
     QRect szw;
     WORD code;
     static WORD col;
-    QByteArray str;
+    //QByteArray str;
+    QString str;
     PreviewDialog* previewDialog;
     QImage* img = nullptr;
     QCursor* cursor;
     void mousePressEvent(QMouseEvent*);
+    bool bRemap = true;
+
     friend class PreviewDialog;
 };
 #endif // PREVIEWDIALOG_H
