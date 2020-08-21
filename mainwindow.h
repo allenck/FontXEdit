@@ -22,8 +22,8 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
     UINT load_file (bool opn	/* 0:再読込, 1:名前を指定して読み込み */);
-    UINT read_fontxfile (	/* 0:失敗, 1:半角, 2:全角 (0: Failure, 1: Halfwidth, 2: Fullwidth)*/
-        QString fname );
+    UINT read_fontxfile (/* 0:失敗, 1:半角, 2:全角 (0: Failure, 1: Halfwidth, 2: Fullwidth)*/
+        QDataStream *stream );
     void edit_set_dot (
         UINT x,		/* 水平位置(0:左端) */
         UINT y,		/* 垂直位置(0:上端) */
@@ -42,6 +42,8 @@ public:
     );
     bool save_file (int mode);
     void edit_rotate (int dir); /* 1:左, 2:右, 3:上, 4:下 */
+    QString rangeReport();
+    int read_header_file(QFile* fp);
 
 public slots:
     void on_tabWidget_current_changed(int);
@@ -109,7 +111,7 @@ private:
     void rfsh_fontinfo (void);
     void read_font (
         //HANDLE h,	/* ファイルハンドル */
-        QFile* f,
+        QDataStream* f,
         QChar code,	/* 読み込み先の文字コード (Character code of the read destination)*/
         UINT fw,	/* フォントの幅[dot] (Font width [dot])*/
         UINT fh		/* フォントの高さ[dot] (Font height [dot])*/ );
@@ -129,6 +131,7 @@ private:
     int expectedChars;
     QString header = QString("/*\n\n\tFONTX version of the Public Domain X11 misc-fixed typeface.\n\thttps://www.cl.cam.ac.uk/~mgk25/ucs-fonts.html\n\n*/\n");
     QString fontName = "        ";
+    QString hComments;
 
     long write_fontxfile (QString fname, BYTE flagmask);
     void write_bytes(QTextStream* strm, BYTE* buf, int len);

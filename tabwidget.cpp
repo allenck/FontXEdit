@@ -13,7 +13,6 @@ TabWidget::TabWidget(BYTE Dbcs, QWidget *parent) :
     ui->idc_fw->setValue(mainWindow->FontWidth[mainWindow->Dbcs]);
     ui->idc_fh->setValue(mainWindow->FontHeight[mainWindow->Dbcs]);
 
-
     WORD code;
     code = mainWindow->CurrentCode[mainWindow->Dbcs];
     ui->idc_char->setText(QChar(code));
@@ -84,11 +83,12 @@ TabWidget::TabWidget(BYTE Dbcs, QWidget *parent) :
      uint nHex = ui->idc_code->text().toUInt(&ok, 16);
      mainWindow->CurrentCode[mainWindow->Dbcs] = nHex;
      mainWindow->get_font(nHex, mainWindow->EditFont);
+     mainWindow->change_code(0);
      emit code_changed(mainWindow->Dbcs, nHex);
     });
     connect(mainWindow, SIGNAL(size_change(int,int,int)), this, SLOT(size_change(int,int,int)));
-    connect(ui->idc_fw, SIGNAL(valueChanged(int)), this, SLOT(icc_fw_value_changed(int)));
-    connect(ui->idc_fh, SIGNAL(valueChanged(int)), this, SLOT(icc_fh_value_changed(int)));
+    connect(ui->idc_fw, SIGNAL(valueChanged(int)), this, SLOT(idc_fw_value_changed(int)));
+    connect(ui->idc_fh, SIGNAL(valueChanged(int)), this, SLOT(idc_fh_value_changed(int)));
 
     ui->frame_2->setLayout(new QVBoxLayout());
     ui->frame_2->layout()->addWidget(new EditWindow(mainWindow->Dbcs, mainWindow->FontHeight[mainWindow->Dbcs],
@@ -107,13 +107,15 @@ void TabWidget::size_change(int Dbcs, int fw, int fh)
     }
 }
 
-void TabWidget::icc_fh_value_changed(int)
+void TabWidget::idc_fh_value_changed(int)
 {
-    emit fh_changed(mainWindow->Dbcs, ui->idc_fh->value());
+    if(ui->idc_fh->value() != mainWindow->FontHeight[mainWindow->Dbcs])
+        emit fh_changed(mainWindow->Dbcs, ui->idc_fh->value());
 }
 
-void TabWidget::icc_fw_value_changed(int)
+void TabWidget::idc_fw_value_changed(int)
 {
+    if(ui->idc_fh->value() != mainWindow->FontWidth[mainWindow->Dbcs])
     emit fw_changed(mainWindow->Dbcs, ui->idc_fw->value());
 }
 

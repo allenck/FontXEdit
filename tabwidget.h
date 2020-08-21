@@ -31,8 +31,8 @@ private:
 
 private slots:
  void size_change(int Dbcs, int fw, int fh); // dbcs, fw, fh
- void icc_fh_value_changed(int);
- void icc_fw_value_changed(int);
+ void idc_fh_value_changed(int);
+ void idc_fw_value_changed(int);
 
 
  friend class MainWindoe;

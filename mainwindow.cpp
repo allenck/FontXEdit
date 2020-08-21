@@ -11,6 +11,9 @@
 #include <QWindow>
 #include <QStringList>
 #include <QInputDialog>
+#include <QPair>
+#include "limits.h"
+#include <QDataStream>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -60,6 +63,7 @@ MainWindow::MainWindow(QWidget *parent) :
        int rslt = dlg->exec();
     });
 
+    hComments = header;
 }
 
 MainWindow::~MainWindow()
@@ -200,10 +204,11 @@ void MainWindow::rfsh_fontinfo (void)
 
     /* 文字数 (word count)*/
     if (Dbcs) {
-        for (nchr = 0, i = 0x100; i < 0x10000; i++) {
-            //if (CodeStat[i] & 1) nchr++;
-            if(fontMap.contains(i)) nchr++;
-        }
+//        for (nchr = 0, i = 0x100; i < 0x10000; i++) {
+//            //if (CodeStat[i] & 1) nchr++;
+//            if(fontMap.contains(i)) nchr++;
+//        }
+        nchr = fontMap.count();
         //sprintf(str, Str[2][Loc], nchr);
         tabWidget2->ui->idc_info->setText(QString(Str[2][Loc]).arg(nchr));
     } else {
@@ -456,6 +461,10 @@ long MainWindow::write_fontxfile (QString fname, BYTE flagmask)
     if(inf.suffix() == "h" )
     {
         hFormat = true;
+        bool ok;
+        QString text = QInputDialog::getMultiLineText(this, tr("Header comments"), tr("Edit the comments for this C header file"), hComments,&ok);
+        if(ok && !text.isEmpty())
+            hComments = text;
     }
 
     ix = 0;     //used by write_bytes();
@@ -489,7 +498,7 @@ long MainWindow::write_fontxfile (QString fname, BYTE flagmask)
 
         strm->setCodec("UTF-8");
         strm->seek(0);
-        *strm << header;
+        *strm << hComments;
         *strm << "const unsigned char ";
         *strm << fontName;
         *strm  << "[] = {\n";
@@ -637,7 +646,7 @@ UINT MainWindow::load_file (bool opn
     if(opn)
     {
         fileName = QFileDialog::getOpenFileName(this,
-            tr("Open Font File"), currPath, tr("Font Files (*.fnt)"));
+            tr("Open Font File"), currPath, tr("Font Files (*.fnt);;C header files(*.h)"));
         if(fileName.isEmpty())
             return 0;   // cancel if nofile selected
 
@@ -646,11 +655,25 @@ UINT MainWindow::load_file (bool opn
     inFile = inf.absoluteFilePath();
     currPath = inf.path();
 
+    QFile* file = new QFile(fileName);
+    if(!file->open(QIODevice::ReadOnly))
+        return 0;
+    QDataStream* stream = new QDataStream(file);
+
+    if(inf.suffix()=="fnt")
+    {
     /* 選択したファイルを全部読み込む(Read all selected files) */
-    f = read_fontxfile(fileName);
+        f = read_fontxfile(stream);
+    }
+    else
+    {
+        f = read_header_file(file);
+    }
     ui->idc_pvc->setEnabled(true);
     ui->idc_exp->setEnabled(true);
+    FontFile[Dbcs] = fileName;
     return f;
+
 }
 
 /* BDFファイルのインポート (BDF file import)*/
@@ -721,7 +744,8 @@ long MainWindow::read_bdffile (QFile* fp)
             s = str + 9;
             d = strtoul(s, &s, 0);
             qDebug() << "ENCODING " << (qint32)d;
-            if (d >= 0x2121 && d <= 0x7E7E) {
+            if (d >= 0x2121 && d <= 0x7E7E)
+            {
                 d -= 0x2121;
                 b1 = (BYTE)(d >> 8); b2 = (BYTE)d;
                 if (b1 & 1) b2 += 0x5E;
@@ -729,7 +753,9 @@ long MainWindow::read_bdffile (QFile* fp)
                 chr = ((b1 >> 1) << 8) + 0x8140 + b2;
                 if (chr >= 0xA000) chr += 0x4000;
                 if (!IS_DBC(chr)) chr = -1;
-            } else {
+            }
+            else
+            {
                 chr = (d < 0x100) ? (long)d : -1;
             }
             encoded_count++;
@@ -772,8 +798,11 @@ long MainWindow::read_bdffile (QFile* fp)
     }
     if(bbxHeight > 0 && bbxWidth > 0)
         emit size_change(Dbcs, bbxWidth, bbxHeight);
+    rangeReport();
     return nchr;
 }
+
+
 
 /* 各種形式のファイルからインポート (Import from files of various formats)*/
 void MainWindow::import_file (
@@ -817,7 +846,7 @@ void MainWindow::import_file (
         {
             //sprintf(onf, Str[15][Loc], nc);
             //MessageBox(hwnd, onf, Str[16][Loc], MB_OK);
-            QMessageBox::critical(this, Str[16][Loc], QString(Str[15][Loc]).arg(nc), QMessageBox::Ok);
+            QMessageBox::information(this, Str[16][Loc], QString(Str[15][Loc]).arg(nc), QMessageBox::Ok);
             ui->idc_pvc->setEnabled(true);
             ui->idc_exp->setEnabled(true);
             QFileInfo inf(fileName);
@@ -827,6 +856,7 @@ void MainWindow::import_file (
             if(inf.baseName().at(0).isLetter() && inf.baseName().length() <= 8)
                 fontName = inf.baseName();
             FontFile[Dbcs] = currPath + QDir::separator() + inf.fileName();
+
         }
     }
     else {
@@ -1114,7 +1144,7 @@ bool MainWindow::save_file (
 /* ファイルから格納順に1文字のフォントデータを読み込み (Read font data of 1 character from the file in storage order)*/
 void MainWindow::read_font (
     //HANDLE h,	/* ファイルハンドル */
-    QFile* f,
+    QDataStream* f,
     QChar code,	/* 読み込み先の文字コード (Character code of the read destination)*/
     UINT fw,	/* フォントの幅[dot] (Font width [dot])*/
     UINT fh		/* フォントの高さ[dot] (Font height [dot])*/
@@ -1123,18 +1153,20 @@ void MainWindow::read_font (
     //BYTE buf[MAX_FONT_WB * MAX_FONT_SQ], *d, *s;
     DWORD /*br,*/ fwb, btr, v, h;
     //qint64 br;
-    QByteArray buf;
+    //QByteArray buf;
 
 //    s = buf;
 //    d = FontImage[code][0];	/* 読み込み先 */
     fwb = (fw + 7) / 8;		/* 幅[バイト] (Width [bytes])*/
     btr = fwb * fh;			/* 1文字のバイト数 (The number of bytes in one character)*/
+    char buf[btr];
 
     //memset(s, 0, btr);
     //buf = QByteArray(btr, 0);
     //ReadFile(h, s, btr, &br, 0);
     //br = f->read((char*)s, btr);
-    buf = f->read(btr);
+    //buf = f->read(btr);
+    f->readRawData(buf, btr);
 
     //memset(d, 0, MAX_FONT_WB * MAX_FONT_SQ);
     BYTE* fontImage;
@@ -1152,7 +1184,7 @@ void MainWindow::read_font (
     {
         for(int i=0; i < fwb; i++)
         {
-          fontImage[ix + i] =  buf.at(bix++);
+            fontImage[ix + i] =  buf[bix++];
         }
         ix += MAX_FONT_WB;
     }
@@ -1162,7 +1194,7 @@ void MainWindow::read_font (
 
 /* FONTXファイルから読み込み */
 UINT MainWindow::read_fontxfile (	/* 0:失敗, 1:半角, 2:全角 (0: Failure, 1: Halfwidth, 2: Fullwidth)*/
-    QString fname
+    QDataStream* f
 )
 {
     //HANDLE h;
@@ -1173,18 +1205,15 @@ UINT MainWindow::read_fontxfile (	/* 0:失敗, 1:半角, 2:全角 (0: Failure, 1
 
 //	h = CreateFile(fname, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 //	if (h == INVALID_HANDLE_VALUE) return 0;
-    QFile* f = new QFile(fname);
-    if(!f->open(QIODevice::ReadOnly))
-        return 0;
 
     /* FONTXヘッダ読み込み */
 //	if (!ReadFile(h, buf, 17, &br, 0) || br != 17 || memcmp(buf, "FONTX2", 6)) {
 //		CloseHandle(h); return 0;
 //	}
 
-    if((br = f->read((char*)buf, 17))!= 17 || memcmp(buf, "FONTX2", 6))
+    if((br = f->readRawData((char*)buf, 17))!= 17 || memcmp(buf, "FONTX2", 6))
     {
-        f->close();
+        //f->close();
         return 0;
     }
     fw = buf[14]; fh = buf[15];		/* 幅と高さ (Width and height)*/
@@ -1192,19 +1221,21 @@ UINT MainWindow::read_fontxfile (	/* 0:失敗, 1:半角, 2:全角 (0: Failure, 1
     emit size_change(Dbcs, fw, fh);
 
     if ((dbcs && Loc) || dbcs > 1 || fw < 4 || fw > MAX_FONT_SQ || fh < 4 || fh > MAX_FONT_SQ) {
-        f->close();
+        //f->close();
         return 0;
     }
 
     if (dbcs) {
         /* レンジテーブルを読み込み (Read range table)*/
         //if (!ReadFile(h, &nr, 1, &br, 0) || br != 1 || !nr) {
-        if((br=f->read((char*)&nr, 1) !=1 || !nr))
+        if((br=f->readRawData((char*)&nr, 1) !=1 || !nr))
         {
-            f->close(); return 0;
+            //f->close();
+            return 0;
         }
-        if ((br=f->read((char*)range, (4 * nr))) != (4 * nr)) {
-            f->close(); return 0;
+        if ((br=f->readRawData((char*)range, (4 * nr))) != (4 * nr)) {
+            //f->close();
+            return 0;
         }
 
         /* フォントデータの読み込み (Read font data)*/
@@ -1219,27 +1250,68 @@ UINT MainWindow::read_fontxfile (	/* 0:失敗, 1:半角, 2:全角 (0: Failure, 1
     } else {
         /* フォントデータの読み込み (Read font data)*/
         for (i = 0; i < 0x100; i++) {
-            qint64 p = f->pos();
             read_font(f, i, fw, fh);
             //CodeStat[i] = 1;
         }
     }
 
-    f->close();
-
     /* フォント情報更新 */
     FontWidth[dbcs] = fw; FontHeight[dbcs] = fh;
     FileChanged[dbcs] = 0;
     //strcpy(FontFile[dbcs], fname);
-    FontFile[dbcs] = fname;
     return 1 + dbcs;
 }
 
+int MainWindow::read_header_file(QFile* fp)
+{
+    QString line;
+    QByteArray ba;
+    bool bstarted = false;
+    QTextStream strm(fp);
+    bool ok;
+    char *buf = new char[100];
+    int dbcs, fw, fh, nr;
+    WORD range[256][2];
+    BYTE ri, i;
+    QString fname;
+
+    while(!strm.atEnd())
+    {
+        line = strm.readLine(100);
+        if(bstarted)
+        {
+           QStringList sl = line.split(",");
+           foreach(QString s, sl)
+           {
+            if(s.trimmed().startsWith("0x"))
+            {
+                ba.append(s.toInt(&ok,16));
+            }
+           }
+           continue;
+        }
+        if(line.startsWith( "const unsigned char "))
+        {
+            fontName = "";
+            for(int i = 0; i < 8; i++)
+            {
+               if(line.at(20 + i) == "[")
+                   break;
+               fontName.append(QChar(line.at(20+i)));
+               bstarted = true;
+            }
+        }
+    }
+
+    QDataStream* bs = new QDataStream(&ba, QIODevice::ReadOnly);
+    return read_fontxfile(bs);
+}
 
 void MainWindow::on_tabWidget_current_changed(int iTab)
 {
     //if (nmupdown->hdr.code != TCN_SELCHANGE) break;
     Dbcs = iTab;//(UINT)TabCtrl_GetCurSel(hTab);
+#if 0
     if (Dbcs > 1) Dbcs = 0;
     if (Dbcs && Loc) {
         Dbcs = 0;
@@ -1247,6 +1319,7 @@ void MainWindow::on_tabWidget_current_changed(int iTab)
         ui->idc_tab1->setCurrentIndex(0);
         QMessageBox::critical(this, "Error", "User locale is not Japanese.");
     }
+#endif
     rfsh_fontinfo();
     change_code(0);
 
@@ -1276,3 +1349,37 @@ void MainWindow::fw_changed(int Dbcs,int fw)
    }
 }
 
+QString MainWindow::rangeReport()
+{
+    QString report;
+
+    // build a table of ranges
+    QPair<quint16, quint16> p = QPair<quint16, quint16>();
+    QList<QChar> keys = fontMap.keys();
+    p.first = USHRT_MAX;
+    p.second = 0;
+    QListIterator<QChar> iter(keys);
+    while(iter.hasNext())
+    {
+     QChar c = iter.next();
+     if(c.unicode() < p.first)
+     {
+         p.first = c.unicode();
+         p.second = c.unicode();
+     }
+     else
+     {
+         if(c.unicode() == p.second +1)
+             p.second = c.unicode();
+         else
+         {
+           qDebug() << "range: " << p.first << QChar(p.first) << " -> "  << p.second << QChar(p.second);
+           report.append(QString("range: 0x%1 '%2' -> 0x%3 '%4' %5 chars\n").arg(p.first,4,16, QChar('0')).arg(QChar(p.first)).arg(p.second,4,16, QChar('0')).arg(QChar(p.second)).arg(p.second-p.first +1));
+           p.first = USHRT_MAX;
+           p.second = 0;
+         }
+     }
+    }
+    qDebug() << report;
+    return report;
+}
