@@ -673,7 +673,10 @@ UINT MainWindow::load_file (bool opn
     }
     ui->idc_pvc->setEnabled(true);
     ui->idc_exp->setEnabled(true);
+
     FontFile[Dbcs] = fileName;
+    rangeReport();
+
     return f;
 
 }
@@ -692,6 +695,7 @@ long MainWindow::read_bdffile (QFile* fp)
     expectedChars = 0;
     int bbxWidth = 0;
     int bbxHeight = 0;
+
 
     fontMap.clear();
     BYTE* fontImage = new BYTE[0, MAX_FONT_WB * MAX_FONT_SQ];
@@ -807,7 +811,6 @@ long MainWindow::read_bdffile (QFile* fp)
     }
     if(bbxHeight > 0 && bbxWidth > 0)
         emit size_change(Dbcs, bbxWidth, bbxHeight);
-    rangeReport();
     return nchr;
 }
 
@@ -865,7 +868,16 @@ void MainWindow::import_file (
             if(inf.baseName().at(0).isLetter() && inf.baseName().length() <= 8)
                 fontName = inf.baseName();
             FontFile[Dbcs] = currPath + QDir::separator() + inf.fileName();
-
+            if(!tabs.at(0)->ui->idc_remap->isChecked())
+                fontDbcs = 1;
+            if(fontDbcs == 0)
+            {
+                tabs.at(Dbcs)->ui->idc_info->setText(tr("SBC, %1 chars ").arg(fontMap.count()));
+            }
+            else
+            {
+                tabs.at(Dbcs)->ui->idc_info->setText(tr("DBC, %1 chars ").arg(fontMap.count()));
+            }
         }
     }
     else {
@@ -1229,9 +1241,20 @@ UINT MainWindow::read_fontxfile (	/* 0:失敗, 1:半角, 2:全角 (0: Failure, 1
     dbcs = buf[16];					/* 半角/全角フラグ (Half-width/full-width flag)*/
     emit size_change(Dbcs, fw, fh);
 
-    if ((dbcs && Loc) || dbcs > 1 || fw < 4 || fw > MAX_FONT_SQ || fh < 4 || fh > MAX_FONT_SQ) {
-        //f->close();
-        return 0;
+    if(tabs.at(0)->ui->idc_remap->isChecked())
+    {
+        if ((dbcs && Loc) || dbcs > 1 || fw < 4 || fw > MAX_FONT_SQ || fh < 4 || fh > MAX_FONT_SQ) {
+            //f->close();
+            return 0;
+        }
+    }
+    else
+    {
+        if ( fw < 4 || fw > MAX_FONT_SQ || fh < 4 || fh > MAX_FONT_SQ) {
+            //f->close();
+            return 0;
+        }
+
     }
 
     if (dbcs) {
@@ -1265,10 +1288,11 @@ UINT MainWindow::read_fontxfile (	/* 0:失敗, 1:半角, 2:全角 (0: Failure, 1
     }
 
     /* フォント情報更新 */
+    fontDbcs = dbcs;
     FontWidth[dbcs] = fw; FontHeight[dbcs] = fh;
     FileChanged[dbcs] = 0;
     //strcpy(FontFile[dbcs], fname);
-    return 1 + dbcs;
+    return /*1 +*/ dbcs;
 }
 
 int MainWindow::read_header_file(QFile* fp)
@@ -1347,7 +1371,7 @@ void MainWindow::fh_changed(int Dbcs,int fh)
      rfsh_fontinfo();
      file_set_changed(true);
      tabs.at(Dbcs)->update();
-     emit size_change(Dbcs, fh,  FontWidth[Dbcs]);
+     emit size_change(Dbcs, FontWidth[Dbcs], fh);
     }
 }
 
@@ -1359,7 +1383,7 @@ void MainWindow::fw_changed(int Dbcs,int fw)
         rfsh_fontinfo();
         file_set_changed(true);
         tabs.at(Dbcs)->update();
-        emit size_change(Dbcs, FontHeight[Dbcs],  fw);
+        emit size_change(Dbcs, fw, FontHeight[Dbcs]);
    }
 }
 

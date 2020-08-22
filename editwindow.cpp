@@ -6,7 +6,7 @@
 EditWindow::EditWindow(BYTE Dbcs, UINT fontHeight, UINT fontWidth, BYTE *editFont, MainWindow* mainWindow, QWidget* parent)
     : QFrame(parent)
 {
-    this->Dbcs = Dbcs;
+    this->dbcs = Dbcs;
     this->editFont = editFont;
     this->fontHeight = fontHeight;
     this->fontWidth = fontWidth;
@@ -41,7 +41,7 @@ void EditWindow::code_change(WORD code, BYTE *buffer)
 
 void EditWindow::size_change(int Dbcs, int fw, int fh)
 {
-    if(this->Dbcs == Dbcs)
+    if(this->dbcs == Dbcs)
     {
         fontHeight = fh;
         fontWidth = fw;
@@ -322,4 +322,9 @@ UINT EditWindow::edit_test_dot (
 {
     create_image();
     update();
+}
+
+/*public*/ void EditWindow::setDbcs(int dbcs)
+{
+    this->dbcs = dbcs;
 }

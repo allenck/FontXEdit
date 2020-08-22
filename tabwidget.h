@@ -23,16 +23,17 @@ public:
 
 signals:
     void fw_changed(int, int);
-    void fh_changed(int,int);
+    void fh_changed(int, int);
     void code_changed(int, WORD);
 private:
  MainWindow* mainWindow;
  BYTE Dbcs;
+ bool setting = false;
 
 private slots:
  void size_change(int Dbcs, int fw, int fh); // dbcs, fw, fh
- void idc_fh_value_changed(int);
- void idc_fw_value_changed(int);
+ void idc_fh_value_changed(int fh);
+ void idc_fw_value_changed(int fw);
 
 
  friend class MainWindoe;

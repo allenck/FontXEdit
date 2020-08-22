@@ -23,8 +23,17 @@ TabWidget::TabWidget(BYTE Dbcs, QWidget *parent) :
     connect(ui->idc_load, &QPushButton::clicked, [=]{
         UINT f;
         f = mainWindow->load_file(1);
-        if (f)
-            mainWindow->change_tab(f);
+//        if (f )
+//            mainWindow->change_tab(f);
+        if(mainWindow->fontDbcs == 0)
+        {
+            ui->idc_info->setText(tr("SBC, %1 chars ").arg(mainWindow->fontMap.count()));
+
+        }
+        else
+        {
+            ui->idc_info->setText(tr("DBC, %1 chars ").arg(mainWindow->fontMap.count()));
+        }
     });
     connect(ui->idc_save, &QPushButton::clicked, [=]{
         if (mainWindow->FileChanged[this->Dbcs]) {
@@ -108,23 +117,25 @@ void TabWidget::size_change(int Dbcs, int fw, int fh)
 {
     if(this->Dbcs == Dbcs)
     {
+        setting = true;
         if(fh != ui->idc_fh->value())
             ui->idc_fh->setValue(fh);
         if(fw != ui->idc_fw->value())
             ui->idc_fw->setValue(fw);
+        setting = false;
     }
 }
 
-void TabWidget::idc_fh_value_changed(int)
+void TabWidget::idc_fh_value_changed(int fh)
 {
-    if(ui->idc_fh->value() != mainWindow->FontHeight[mainWindow->Dbcs])
-        emit fh_changed(mainWindow->Dbcs, ui->idc_fh->value());
+    if(!setting && ui->idc_fh->value() != mainWindow->FontHeight[mainWindow->Dbcs])
+        emit fh_changed(mainWindow->Dbcs, fh);
 }
 
-void TabWidget::idc_fw_value_changed(int)
+void TabWidget::idc_fw_value_changed(int fw)
 {
-    if(ui->idc_fh->value() != mainWindow->FontWidth[mainWindow->Dbcs])
-    emit fw_changed(mainWindow->Dbcs, ui->idc_fw->value());
+    if(!setting && ui->idc_fw->value() != mainWindow->FontWidth[mainWindow->Dbcs])
+    emit fw_changed(mainWindow->Dbcs, fw);
 }
 
 TabWidget::~TabWidget()

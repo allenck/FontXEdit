@@ -60,13 +60,17 @@ private:
     TabWidget* tabWidget2;
     QList<TabWidget*> tabs = QList<TabWidget*>();
 
-    /* フォントファイル情報 */
+    /* フォントファイル情報 (Font file information)*/
     QString FontFile[2]/*[_MAX_PATH]*/;		/* 開いているファイル (Open file)*/
     bool FileChanged[2];				/* ファイル変更フラグ (File change flag)*/
     UINT FontWidth[2] = {9, 18}, FontHeight[2] = {18, 18};	/* フォントサイズ[ドット] (Font size [dot])*/
 //    BYTE CodeStat[0x10000];				/* b0:コード存在フラグ (b0: Code existence flag)*/
 //    BYTE FontImage[0x10000][MAX_FONT_SQ][MAX_FONT_WB];
     QMap<QChar, BYTE*> fontMap = QMap<QChar, BYTE*>();
+    QString header = QString("/*\n\n\tFONTX version of the Public Domain X11 misc-fixed typeface.\n\thttps://www.cl.cam.ac.uk/~mgk25/ucs-fonts.html\n\n*/\n");
+    QString fontName = "        ";
+    QString hComments;
+    BYTE fontDbcs = 0; // Dbcs of imported or loaded font;
 
     /* フォント編集情報 (Font editing information)*/
     BYTE Dbcs = 0;			/* 編集中のフォント 0:半角, 1:全角 (Editing font 0: Half-width, 1: Full-width)*/
@@ -108,6 +112,7 @@ private:
 //        /* 27 */ {"半角フォントはこの形式で出力できません.","SBC font cannot be written in this format"},
 //        /* 28 */ {"出力文字を含むSJISテキストを指定","Specify SJIS text with output characters"},
 //        /* 29 */ {"ファイルのインポートに失敗しました.","Failed to import font"}};
+
     void rfsh_fontinfo (void);
     void read_font (
         //HANDLE h,	/* ファイルハンドル */
@@ -129,9 +134,7 @@ private:
     int encoded_count;
     int bitmap_count;
     int expectedChars;
-    QString header = QString("/*\n\n\tFONTX version of the Public Domain X11 misc-fixed typeface.\n\thttps://www.cl.cam.ac.uk/~mgk25/ucs-fonts.html\n\n*/\n");
-    QString fontName = "        ";
-    QString hComments;
+
 
     long write_fontxfile (QString fname, BYTE flagmask);
     void write_bytes(QTextStream* strm, BYTE* buf, int len);

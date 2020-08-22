@@ -11,15 +11,16 @@ class EditWindow : public QFrame
 {
     Q_OBJECT
 public:
-    EditWindow(BYTE Dbcs, UINT fontHeight, UINT fontWidth, BYTE* editFont, MainWindow *mainWindow, QWidget* parent =0);
+    EditWindow(BYTE dbcs, UINT fontHeight, UINT fontWidth, BYTE* editFont, MainWindow *mainWindow, QWidget* parent =0);
     UINT edit_test_dot (
         UINT x,		/* 水平位置(0:左端) (Horizontal position (0: left end))*/
         UINT y		/* 垂直位置(0:上端) (Vertical position (0: upper end))*/
     );
+    /*public*/ void setDbcs(int dbcs);
 
 public slots:
     void code_change(WORD code, BYTE* );
-    void size_change(int Dbcs, int fw, int fh);
+    void size_change(int dbcs, int fw, int fh);
 
 private:
     BYTE* editFont;
@@ -27,7 +28,7 @@ private:
     UINT fontHeight = 0;
     UINT fontWidth = 0;
     UINT EditDotSize = 0;
-    BYTE Dbcs;
+    BYTE dbcs;
     WORD code;
     MainWindow* mainWindow;
     int dx =0, dy =0;

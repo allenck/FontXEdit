@@ -305,7 +305,7 @@
      <item row="1" column="1">
       <widget class="QSpinBox" name="idc_fw">
        <property name="minimum">
-        <number>6</number>
+        <number>4</number>
        </property>
        <property name="maximum">
         <number>24</number>
@@ -370,7 +370,7 @@
         </size>
        </property>
        <property name="minimum">
-        <number>6</number>
+        <number>4</number>
        </property>
        <property name="maximum">
         <number>24</number>
