@@ -83,8 +83,8 @@ void PreviewWidget::paintEvent(QPaintEvent *evt)
             }
             else
             {
-                fw = mainWindow->FontWidth[0];
-                fh = mainWindow->FontHeight[0];
+                fw = mainWindow->FontWidth[mainWindow->fontDbcs];
+                fh = mainWindow->FontHeight[mainWindow->fontDbcs];
             }
             if(code > 0)
                 qDebug() << "pv_put_font " << szw << " x:" << x << " y:" << y << fw << fh  << QChar(code) << QString(QChar(code));

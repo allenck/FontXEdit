@@ -676,7 +676,7 @@ UINT MainWindow::load_file (bool opn
 
     FontFile[Dbcs] = fileName;
     rangeReport();
-
+    setWindowTitle(inf.baseName());
     return f;
 
 }

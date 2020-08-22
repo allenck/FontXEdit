@@ -171,7 +171,7 @@ void EditWindow::edit_draw_dot (
 //			EditBm[y + 0][x + 1] ^= 0x7FFF;
 //			EditBm[y + 2][x + 1] ^= 0x7FFF;
             qPainter.drawLine(x+1, y+0, x+1, y+2);
-            qPainter.drawLine(x+0, y+1, x+1, y+1);
+            qPainter.drawLine(x+0, y+1, x+2, y+1);
         }
         if (ty & 4) {
 //			StretchDIBits(hdc, x, y, 3, 3, x, EDIT_WINDOW_SQ - y - EditDotSize, 3, 3, EditBm[0], &EditBi, DIB_RGB_COLORS, SRCCOPY);
